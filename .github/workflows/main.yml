@@ -79,7 +79,7 @@ jobs:
     - name: List Java Files Being Scanned
       run: |
         echo "=== Listing Java files to be scanned ==="
-        find . -name "*.java" | tee scanned-java-files.txt
+        find . -name "*.java"
         echo "========================================"
 
     - name: 🔍 Run CodeQL Analysis
