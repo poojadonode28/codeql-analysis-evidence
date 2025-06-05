@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Java
       uses: actions/setup-java@v3
@@ -45,7 +45,7 @@ jobs:
         else
           echo "No build file found. Using direct compilation."
           mkdir -p target/classes
-          find src/main/java -name "*.java" -type f -exec javac -d target/classes {} +
+          find src/ -name "*.java" -type f -exec javac -d target/classes {} +
         fi
 
     - name: Perform CodeQL Analysis
