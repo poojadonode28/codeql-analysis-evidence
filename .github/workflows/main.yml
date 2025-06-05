@@ -1,49 +1,106 @@
-name: Java Build and Package
+name: "CodeQL"
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  build:
+  analyze:
+    name: Analyze Java Code with CodeQL
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java' ]
 
     steps:
-    - name: Checkout only required directory
+    - name: 🧾 Checkout source code
       uses: actions/checkout@v4
       with:
         sparse-checkout: |
           examples/codeql/**
         sparse-checkout-cone-mode: false
 
-    - name: Set up Java
+    - name: ☕ Set up Java (no Maven cache yet)
       uses: actions/setup-java@v3
       with:
-        distribution: temurin
-        java-version: 17
-        cache: maven
+        distribution: 'temurin'
+        java-version: '17'
 
-    - name: Generate pom.xml if missing
+    - name: 🧱 Generate Maven project if pom.xml is missing
       run: |
         if [ ! -f "pom.xml" ]; then
-          echo "Generating sample Maven project..."
+          echo "No pom.xml found. Generating project..."
           mvn archetype:generate \
             -DgroupId=com.example \
             -DartifactId=myapp \
             -DarchetypeArtifactId=maven-archetype-quickstart \
             -DinteractiveMode=false
 
+          echo "Moving generated project to root..."
           mv myapp/* . && mv myapp/.* . 2>/dev/null || true
           rm -rf myapp
+        else
+          echo "Found pom.xml. Skipping generation."
         fi
 
-    - name: Build and package JAR
+    - name: 🔄 Re-setup Java with Maven caching
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'maven'
+
+    - name: 🧠 Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended
+
+    - name: 🛠 Build & Package Java Project
       run: |
-        echo "Building project and creating JAR file..."
-        mvn clean package
+        if [ -f "pom.xml" ]; then
+          echo "Building and packaging with Maven..."
+          mvn clean package
+
+          echo "=== 📦 Package Created ==="
+          ls -lh target/*.jar || echo "❌ No JAR file found."
+        else
+          echo "No pom.xml found. Compiling manually..."
+          mkdir -p target/classes
+          find src/ -name "*.java" -type f -exec javac -d target/classes {} +
+          echo "Manual build completed. No JAR was created."
+        fi
+
+    - name: 📃 List Java Files Being Scanned
+      run: |
+        echo "=== Listing Java files to be scanned ==="
+        find . -name "*.java" | tee scanned-java-files.txt
+        echo "========================================"
+
+    - name: 🔍 Run CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "${{ github.workflow }}-${{ matrix.language }}"
+        output: "${{ github.workspace }}/sarif-results"
+
+    - name: 📄 Display SARIF File Location
+      run: |
+        echo "=== SARIF File Information ==="
+        echo "Workspace: ${{ github.workspace }}"
+        echo "Looking for SARIF files in sarif-results directory:"
+        ls -la "${{ github.workspace }}/sarif-results" || true
+        echo "=== Language: ${{ matrix.language }} ==="
+        echo "Detailed SARIF file list:"
+        find "${{ github.workspace }}/sarif-results" -name "*${{ matrix.language }}*.sarif" -type f -exec ls -l {} \; || true
 
     - name: List JAR file(s) created
       run: |
