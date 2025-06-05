@@ -24,6 +24,10 @@ jobs:
     steps:
     - name:  Checkout source code
       uses: actions/checkout@v4
+      with:
+          sparse-checkout: |
+            examples/codeql/**
+          sparse-checkout-cone-mode: false
 
     - name: ☕ Set up Java (no Maven cache yet)
       uses: actions/setup-java@v3
