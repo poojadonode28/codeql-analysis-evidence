@@ -22,12 +22,12 @@ jobs:
         language: [ 'java' ]
 
     steps:
-    - name:  Checkout source code
+    - name: 🧾 Checkout source code
       uses: actions/checkout@v4
       with:
-          sparse-checkout: |
-            examples/codeql/**
-          sparse-checkout-cone-mode: false
+        sparse-checkout: |
+          examples/codeql/**
+        sparse-checkout-cone-mode: false
 
     - name: ☕ Set up Java (no Maven cache yet)
       uses: actions/setup-java@v3
@@ -52,20 +52,20 @@ jobs:
           echo "Found pom.xml. Skipping generation."
         fi
 
-    - name: 🔄 Re-setup Java with Maven caching
+    - name:  Re-setup Java with Maven caching
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
         cache: 'maven'
 
-    - name: Initialize CodeQL
+    - name:  Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         queries: security-extended
 
-    - name:  Build Java Project
+    - name: 🛠 Build Java Project
       run: |
         if [ -f "pom.xml" ]; then
           echo "Building with Maven..."
@@ -76,13 +76,19 @@ jobs:
           find src/ -name "*.java" -type f -exec javac -d target/classes {} +
         fi
 
-    - name:  Run CodeQL Analysis
+    - name: List Java Files Being Scanned
+      run: |
+        echo "=== Listing Java files to be scanned ==="
+        find . -name "*.java" | tee scanned-java-files.txt
+        echo "========================================"
+
+    - name: 🔍 Run CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
         category: "${{ github.workflow }}-${{ matrix.language }}"
         output: "${{ github.workspace }}/sarif-results"
 
-    - name:  Display SARIF File Location
+    - name: 📄 Display SARIF File Location
       run: |
         echo "=== SARIF File Information ==="
         echo "Workspace: ${{ github.workspace }}"
@@ -91,4 +97,3 @@ jobs:
         echo "=== Language: ${{ matrix.language }} ==="
         echo "Detailed SARIF file list:"
         find "${{ github.workspace }}/sarif-results" -name "*${{ matrix.language }}*.sarif" -type f -exec ls -l {} \; || true
-
